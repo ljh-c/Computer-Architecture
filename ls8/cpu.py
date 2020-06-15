@@ -67,11 +67,41 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        running = True
+
+        # instruction to opcode
+        HLT = 0b00000001 # Exit emulator
+        LDI = 0b10000010 # Set value of register
+        PRN = 0b01000111 # Print value at register
+
+        while running:
+            # read the memory address stored in register PC
+            # then store in ir, the instruction register
+            ir = self.ram_read(self.pc)
+
+            # read bytes at PC+1 and PC+2 in case instruction needs them
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+
+            if ir == HLT:
+                running = False
+                self.pc += 1
+
+            elif ir == LDI:
+                self.ram_write(operand_a, operand_b)
+                self.pc += 3
+
+            elif ir == PRN:
+                print(self.ram_read(operand_a))
+                self.pc += 2
+
+            else:
+                print(f'Unknown instruction {ir} at address {self.pc}')
+                sys.exit(1)
 
     def ram_read(self, address: int):
         """Return the value stored at the address."""
         return self.ram[address]
     
-    def ram_write(self, data, address: int):
+    def ram_write(self, address: int, data):
         self.ram[address] = data

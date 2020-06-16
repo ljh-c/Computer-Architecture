@@ -44,10 +44,13 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
+        # arithmetic logic unit
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -79,6 +82,7 @@ class CPU:
         HLT = 0b00000001 # Exit emulator
         LDI = 0b10000010 # Set value of register
         PRN = 0b01000111 # Print value at register
+        MUL = 0b10100010 # Multiply values of two registers
 
         while running:
             # read the memory address stored in register PC
@@ -94,12 +98,16 @@ class CPU:
                 self.pc += 1
 
             elif ir == LDI:
-                self.ram_write(operand_a, operand_b)
+                self.reg[operand_a] = operand_b
                 self.pc += 3
 
             elif ir == PRN:
-                print(self.ram_read(operand_a))
+                print(self.reg[operand_a])
                 self.pc += 2
+
+            elif ir == MUL:
+                self.alu('MUL', operand_a, operand_b)
+                self.pc += 3
 
             else:
                 print(f'Unknown instruction {ir} at address {self.pc}')

@@ -2,6 +2,12 @@
 
 import sys
 
+# instruction to opcode
+HLT = 0b00000001 # Exit emulator
+LDI = 0b10000010 # Set value of register
+PRN = 0b01000111 # Print value at register
+MUL = 0b10100010 # Multiply values of two registers
+
 class CPU:
     """Main CPU class."""
 
@@ -13,6 +19,35 @@ class CPU:
         self.reg = [0] * 8
         # program counter, special-purpose register
         self.pc = 0
+
+        self.running = False
+
+    def handle_hlt(self, a, b):
+        self.running = False
+        self.pc += 1
+
+    def handle_ldi(self, a, b):
+        self.reg[a] = b
+        self.pc += 3
+
+    def handle_prn(self, a, b):
+        print(self.reg[a])
+        self.pc += 2
+
+    def handle_mul(self, a, b):
+        self.alu('MUL', a, b)
+        self.pc += 3
+
+    def exec(self, instruction, a=None, b=None):
+        # set up branch table
+        dispatch = {
+            HLT: self.handle_hlt,
+            LDI: self.handle_ldi,
+            PRN: self.handle_prn,
+            MUL: self.handle_mul
+        }
+
+        dispatch[instruction](a, b)
 
     def load(self, file_path: str):
         """Load a program into memory."""
@@ -35,12 +70,13 @@ class CPU:
         #     address += 1
 
         with open(file_path) as file:
-            for line in file.readlines():
+            for line in file:
                 if line == '\n' or line[0] == '#':
                     continue
                 else:
-                    self.ram[address] = int(line[:8], 2)
-                    address += 1
+                    self.ram[address] = int(line.split()[0], 2)
+
+                address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -76,15 +112,9 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        running = True
+        self.running = True
 
-        # instruction to opcode
-        HLT = 0b00000001 # Exit emulator
-        LDI = 0b10000010 # Set value of register
-        PRN = 0b01000111 # Print value at register
-        MUL = 0b10100010 # Multiply values of two registers
-
-        while running:
+        while self.running:
             # read the memory address stored in register PC
             # then store in ir, the instruction register
             ir = self.ram_read(self.pc)
@@ -93,25 +123,17 @@ class CPU:
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            if ir == HLT:
-                running = False
-                self.pc += 1
+            self.exec(ir, operand_a, operand_b)
 
-            elif ir == LDI:
-                self.reg[operand_a] = operand_b
-                self.pc += 3
-
-            elif ir == PRN:
-                print(self.reg[operand_a])
-                self.pc += 2
-
-            elif ir == MUL:
-                self.alu('MUL', operand_a, operand_b)
-                self.pc += 3
-
-            else:
-                print(f'Unknown instruction {ir} at address {self.pc}')
-                sys.exit(1)
+            # try:
+            #     self.exec(ir, operand_a, operand_b)
+            # except:
+            #     print(f'Unknown instruction {ir} at address {self.pc}')
+            #     sys.exit(1)
+            
+            # n_operands = ir & 0b11000000 >> 6
+            # n_move_pc = n_operands + 1
+            # self.pc += n_move_pc
 
     def ram_read(self, address: int):
         """Return the value stored at the address."""

@@ -9,6 +9,9 @@ PRN = 0b01000111    # Print value at register
 MUL = 0b10100010    # Multiply values of two registers
 PUSH = 0b01000101   # Push value in given register on stack
 POP = 0b01000110    # Pop value at top of stack into given register
+CALL = 0b01010000   # Call subroutine at address stored in register
+RET = 0b00010001    # Return from subroutine by popping PC from stack
+ADD = 0b10100000    # Add the value of two registers and store in register A
 
 class CPU:
     """Main CPU class."""
@@ -43,6 +46,20 @@ class CPU:
     def handle_pop(self, a, b):
         self.reg[a] = self.ram_read(self.reg[7])
         self.reg[7] += 1
+    
+    def handle_call(self, a, b):
+        self.handle_push(a, None)
+
+        self.reg[7] -= 1
+        self.ram_write(self.reg[7], self.pc + 2)
+        self.pc = self.reg[a]
+    
+    def handle_ret(self, a, b):
+        self.pc = self.ram_read(self.reg[7])
+        self.reg[7] += 1
+    
+    def handle_add(self, a, b):
+        self.alu('ADD', a, b)
 
     def exec(self, instruction, a=None, b=None):
         # set up branch table
@@ -52,7 +69,10 @@ class CPU:
             PRN: self.handle_prn,
             MUL: self.handle_mul,
             PUSH: self.handle_push,
-            POP: self.handle_pop
+            POP: self.handle_pop,
+            CALL: self.handle_call,
+            RET: self.handle_ret,
+            ADD: self.handle_add
         }
         
         dispatch[instruction](a, b)
@@ -118,11 +138,12 @@ class CPU:
             try:
                 self.exec(ir, operand_a, operand_b)
 
-                n_operands = (ir & 0b11000000) >> 6
-                n_move_pc = n_operands + 1
-                self.pc += n_move_pc
+                if ((ir & 0b00010000) >> 4) == 0:
+                    n_operands = (ir & 0b11000000) >> 6
+                    n_move_pc = n_operands + 1
+                    self.pc += n_move_pc
             except:
-                print(f'Unknown instruction {ir} at address {self.pc}')
+                print(f'Unknown instruction {bin(ir)} at address {self.pc}')
                 sys.exit(1)
 
     def ram_read(self, address: int):

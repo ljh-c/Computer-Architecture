@@ -3,10 +3,12 @@
 import sys
 
 # instruction to opcode
-HLT = 0b00000001 # Exit emulator
-LDI = 0b10000010 # Set value of register
-PRN = 0b01000111 # Print value at register
-MUL = 0b10100010 # Multiply values of two registers
+HLT = 0b00000001    # Exit emulator
+LDI = 0b10000010    # Set value of register
+PRN = 0b01000111    # Print value at register
+MUL = 0b10100010    # Multiply values of two registers
+PUSH = 0b01000101   # Push value in given register on stack
+POP = 0b01000110    # Pop value at top of stack into given register
 
 class CPU:
     """Main CPU class."""
@@ -15,8 +17,8 @@ class CPU:
         """Construct a new CPU."""
         # holds 256 bytes of memory
         self.ram = [0] * 256
-        # 8 general-purpose registers
-        self.reg = [0] * 8
+        # 8 general-purpose registers + stack pointer
+        self.reg = [0] * 7 + [0xF4]
         # program counter, special-purpose register
         self.pc = 0
 
@@ -34,13 +36,23 @@ class CPU:
     def handle_mul(self, a, b):
         self.alu('MUL', a, b)
 
+    def handle_push(self, a, b):
+        self.reg[7] -= 1
+        self.ram_write(self.reg[7], self.reg[a])
+    
+    def handle_pop(self, a, b):
+        self.reg[a] = self.ram_read(self.reg[7])
+        self.reg[7] += 1
+
     def exec(self, instruction, a=None, b=None):
         # set up branch table
         dispatch = {
             HLT: self.handle_hlt,
             LDI: self.handle_ldi,
             PRN: self.handle_prn,
-            MUL: self.handle_mul
+            MUL: self.handle_mul,
+            PUSH: self.handle_push,
+            POP: self.handle_pop
         }
         
         dispatch[instruction](a, b)

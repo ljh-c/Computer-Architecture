@@ -24,19 +24,15 @@ class CPU:
 
     def handle_hlt(self, a, b):
         self.running = False
-        self.pc += 1
 
     def handle_ldi(self, a, b):
         self.reg[a] = b
-        self.pc += 3
 
     def handle_prn(self, a, b):
         print(self.reg[a])
-        self.pc += 2
 
     def handle_mul(self, a, b):
         self.alu('MUL', a, b)
-        self.pc += 3
 
     def exec(self, instruction, a=None, b=None):
         # set up branch table
@@ -46,28 +42,12 @@ class CPU:
             PRN: self.handle_prn,
             MUL: self.handle_mul
         }
-
+        
         dispatch[instruction](a, b)
 
     def load(self, file_path: str):
         """Load a program into memory."""
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010, # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111, # PRN R0
-        #     0b00000000,
-        #     0b00000001, # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
 
         with open(file_path) as file:
             for line in file:
@@ -123,17 +103,15 @@ class CPU:
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            self.exec(ir, operand_a, operand_b)
+            try:
+                self.exec(ir, operand_a, operand_b)
 
-            # try:
-            #     self.exec(ir, operand_a, operand_b)
-            # except:
-            #     print(f'Unknown instruction {ir} at address {self.pc}')
-            #     sys.exit(1)
-            
-            # n_operands = ir & 0b11000000 >> 6
-            # n_move_pc = n_operands + 1
-            # self.pc += n_move_pc
+                n_operands = (ir & 0b11000000) >> 6
+                n_move_pc = n_operands + 1
+                self.pc += n_move_pc
+            except:
+                print(f'Unknown instruction {ir} at address {self.pc}')
+                sys.exit(1)
 
     def ram_read(self, address: int):
         """Return the value stored at the address."""

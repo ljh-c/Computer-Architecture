@@ -12,6 +12,10 @@ POP = 0b01000110    # Pop value at top of stack into given register
 CALL = 0b01010000   # Call subroutine at address stored in register
 RET = 0b00010001    # Return from subroutine by popping PC from stack
 ADD = 0b10100000    # Add the value of two registers and store in register A
+CMP = 0b10100111    # Compare the values of two registers and set the flag
+JMP = 0b01010100    # Set the PC (jump) to the address in the given register
+JEQ = 0b01010101    # If the equal flag is true, jump to address in register
+JNE = 0b01010110    # If the equal flag is false, jump to address in register
 
 class CPU:
     """Main CPU class."""
@@ -26,6 +30,8 @@ class CPU:
         self.pc = 0
 
         self.running = False
+
+        self.fl = 0b00000000
 
     def handle_hlt(self, a, b):
         self.running = False
@@ -48,8 +54,6 @@ class CPU:
         self.reg[7] += 1
     
     def handle_call(self, a, b):
-        self.handle_push(a, None)
-
         self.reg[7] -= 1
         self.ram_write(self.reg[7], self.pc + 2)
         self.pc = self.reg[a]
@@ -60,6 +64,25 @@ class CPU:
     
     def handle_add(self, a, b):
         self.alu('ADD', a, b)
+    
+    def handle_cmp(self, a, b):
+        self.alu('CMP', a, b)
+        # print('flag is', bin(self.fl))
+    
+    def handle_jmp(self, a, b):
+        self.pc = self.reg[a]
+    
+    def handle_jeq(self, a, b):
+        if self.fl & 0b00000001:
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
+
+    def handle_jne(self, a, b):
+        if (self.fl & 0b00000001) == 0:
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
 
     def exec(self, instruction, a=None, b=None):
         # set up branch table
@@ -72,7 +95,11 @@ class CPU:
             POP: self.handle_pop,
             CALL: self.handle_call,
             RET: self.handle_ret,
-            ADD: self.handle_add
+            ADD: self.handle_add,
+            CMP: self.handle_cmp,
+            JMP: self.handle_jmp,
+            JEQ: self.handle_jeq,
+            JNE: self.handle_jne
         }
         
         dispatch[instruction](a, b)
@@ -99,6 +126,15 @@ class CPU:
         #elif op == "SUB": etc
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.fl = 0b00000100
+
+            if self.reg[reg_a] > self.reg[reg_b]:
+                self.fl = 0b00000010
+
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.fl = 0b00000001
         else:
             raise Exception("Unsupported ALU operation")
 
